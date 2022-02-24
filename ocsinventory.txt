@@ -1,0 +1,138 @@
+---------------------------INSTALAÇÃO OCS INVENTORY SERVER 2.9--------------------------
+No UBUNTU SERVER 20.04.3 
+
+1- Instalando dependências PHP, Apache e MariaDB
+
+apt-get install libgdbm-dev libxml-simple-perl perl libdbi-perl libdbd-mysql-perl libapache-dbi-perl libnet-ip-perl libsoap-lite-perl libswitch-perl php-pclzip php7.4 php7.4-soap php7.4-xml php7.4-gd  php7.4-curl php7.4-mysql php7.4-zip libxml-parser-perl build-essential git libconfig-yaml-perl php7.4-mbstring apache2 mariadb-server
+
+
+2-Instale Perl e Módulos Requeridos
+O inventário do OCS também exigia que Perl e alguns módulos Perl fossem instalados em seu servidor. Você pode instalar todos eles com o seguinte comando:
+
+apt-get install perl libxml-simple-perl libcompress-zlib-perl libdbi-perl libdbd-mysql-perl libnet-ip-perl libsoap-lite-perl libio-compress-perl libapache-dbi-perl libapache2-mod-perl2 libapache2-mod-perl2-dev -y
+
+Depois de instalar todos os módulos, habilite-os com o seguinte comando:
+
+perl -MCPAN -e 'install Apache2::SOAP'
+perl -MCPAN -e 'install XML::Entities'
+perl -MCPAN -e 'Archive::Zip'
+perl -MCPAN -e 'install Net::IP'
+perl -MCPAN -e 'install Apache::DBI'
+perl -MCPAN -e 'install Mojolicious'
+perl -MCPAN -e 'install Switch'
+perl -MCPAN -e 'install Plack::Handler'
+perl -MCPAN -e 'install SOAP::Lite'
+
+
+Reinicie o serviço do Apache para que as alterações sejam efetuadas.
+
+/etc/init.d/apache2 restart
+
+
+----------------Criando o banco de dados ocs no MySQL-------------------------------
+mysql -u root -p
+
+Enter password: < digite a senha de root que foi definida na instalação do MariaDB >
+
+Criar o banco de dados ocsweb
+
+mysql> create database ocsweb character set utf8;
+
+
+Criar o usuário, exemplo: user(Informar o nome do usuário) para o banco ocs
+
+MariaDB [(none)]> GRANT ALL PRIVILEGES ON *.* TO user@localhost IDENTIFIED BY "senha" WITH GRANT OPTION; 
+
+Em seguida, libere os privilégios e saia do shell MariaDB com o seguinte comando:
+
+MariaDB [(none)]> FLUSH PRIVILEGES;
+MariaDB [(none)]> EXIT;
+
+-------------Instalando OCS 2.9-----------------
+
+Download do site https://github.com/OCSInventory-NG/OCSInventory-ocsreports/releases
+
+wget https://github.com/OCSInventory-NG/OCSInventory-ocsreports/releases/download/2.9/OCSNG_UNIX_SERVER-2.9.tar.gz
+
+tar -zxvf OCSNG_UNIX_SERVER-2.9.tar.gz
+
+sh setup.sh
+
+1 - Which host is running database server [localhost] ? [ENTER]
+ 2 - On which port is running database server [3306] ? [ENTER]
+ 3 - Where is Apache daemon binary [/usr/sbin/apache2ctl] ? [ENTER]
+ 4 - Where is Apache main configuration file [/etc/apache2/apache2.conf] ? [ENTER]
+ 5 - Which user account is running Apache web server [www-data] ? [ENTER]
+ 6 - Which user group is running Apache web server [www-data] ? [ENTER]
+ 7 - Where is Apache Include configuration directory [/etc/apache2/conf-available] ? /etc/apache2/sites-available [ENTER]  
+ 8 - Where is PERL interpreter binary [/usr/bin/perl] ? [ENTER]
+ 9 - Do you wish to setup Communication server on this computer ([y]/n)? [ENTER]
+ 10 - Where to put Communication server log directory [/var/log/ocsinventory-server] ? [ENTER]
+ 11 - Where to put Communication server plugins configuration files [/etc/ocsinventory-server/plugins] ? [ENTER]
+ 12 - Where to put Communication server plugins Perl modules files [/etc/ocsinventory-server/perl] ? [ENTER]
+ 13 - Do you wish to continue ([y]/n] ? [ENTER]
+ 14 - Do you wish to setup Rest API server on this computer ([y]/n)? [ENTER]
+ 15 - Where do you want the API code to be store [/usr/local/share/perl/5.24.1] ? [ENTER]
+ 16 - to 'z-ocsinventory-server.conf' ([y]/n) ? [ENTER]
+ 17 - Do you wish to setup Administration Server (Web Administration Console) on this computer ([y]/n)? [ENTER]
+ 18 - Do you wish to continue ([y]/n)? [ENTER]
+ 19 - Where to copy Administration Server static files for PHP Web Console [/usr/share/ocsinventory-reports] ? [ENTER]
+ 20 - Where to create writable/cache directories for deployment packages,administration console logs, IPDiscover and SNMP [/var/lib/ocsinventory-reports]? [ENTER]
+
+
+-------Ajustes no php.ini------
+
+Para PHP 7.4
+
+vi /etc/php/7.4/apache2/php.ini
+
+Parâmetros a serem alterados:
+
+max_execution_time = 200
+max_input_time = 200
+memory_limit = 512M
+post_max_size = 128M
+upload_max_filesize = 128M
+
+
+Ajustando parâmetros do OCS
+
+vi /etc/apache2/sites-available/ocsinventory-reports.conf
+
+Parâmetros a serem alterados:
+
+php_value post_max_size 128m
+php_value upload_max_filesize 128m
+
+
+vi /etc/apache2/sites-available/z-ocsinventory-server.conf
+
+#PerlSetVar OCS_DB_PWD user
+ PerlSetVar OCS_DB_PWD senhasegura
+ 
+Criando Links Simbólicos para o Apache
+
+ln -s /etc/apache2/sites-available/z-ocsinventory-server.conf /etc/apache2/sites-enabled/
+ln -s /etc/apache2/sites-available/zz-ocsinventory-restapi.conf /etc/apache2/sites-enabled/
+ln -s /etc/apache2/sites-available/ocsinventory-reports.conf /etc/apache2/sites-enabled/
+/etc/init.d/apache2 restart 
+ 
+ 
+Ajustando dono da pasta reports para UBUNTU 20.04.
+
+chown www-data:www-data -R /var/lib/ocsinventory-reports/
+
+---------------Pós instalação-----------------
+
+realizar este comando, somente após acessar o OCS através da WEB (http://IPDOSERVER/ocsreports) e 
+realizar o wizard da instalação, caso contrário irá abrir apenas uma página em branco, pois o servidor não irá encontrar o arquivo (install.php) 
+para fazer o processo de ajuste de banco de dados e fazer o setup do OCS
+
+
+rm /usr/share/ocsinventory-reports/ocsreports/install.php
+
+
+----------INSTALAÇÃO AGENTE OSCINVENTORY LINUX------------
+apt install ocsinventory-agent
+
+ocsinventory-agent --force
